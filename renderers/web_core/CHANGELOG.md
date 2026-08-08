@@ -1,5 +1,6 @@
 ## Unreleased
 
+- (v0_9) Add `isWebComponentImplementation` type guard for WebComponentImplementation. [#2273](https://github.com/a2ui-project/a2ui/pull/2273)
 - (v0_9) Enable setting and getting a default `MarkdownRenderer` (`setMarkdownRenderer` / `getMarkdownRenderer`) in `@a2ui/web_core/v0_9/basic_catalog` for basic catalog text components. [#2272](https://github.com/a2ui-project/a2ui/pull/2272)
 - (v0_9) Enforce the expression parser's nesting limit. The depth guard was unreachable, so deeply nested interpolations or function-call arguments recursed until the stack overflowed instead of raising `A2uiExpressionError`. ([#2492](https://github.com/a2ui-project/a2ui/pull/2492))
 - (v0_9) Add unit test coverage for all basic catalog Web Component implementations. [#2357](https://github.com/a2ui-project/a2ui/pull/2357)

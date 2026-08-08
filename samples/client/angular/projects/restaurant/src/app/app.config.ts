@@ -27,6 +27,15 @@ import {provideClientHydration, withEventReplay} from '@angular/platform-browser
 import {renderMarkdown} from '@a2ui/markdown-it';
 import {A2uiClientAction} from '@a2ui/web_core/v0_9';
 
+function getUseUniversalComponents(): boolean {
+  if (typeof window !== 'undefined' && window.location) {
+    const params = new URLSearchParams(window.location.search);
+    const val = params.get('useUniversalComponents');
+    return val === 'true' || val === '1';
+  }
+  return false;
+}
+
 export const appConfig: ApplicationConfig = {
   providers: [
     provideBrowserGlobalErrorListeners(),
@@ -36,6 +45,7 @@ export const appConfig: ApplicationConfig = {
       const injector = inject(Injector);
       return {
         catalogs: [new BasicCatalog()],
+        useUniversalComponents: getUseUniversalComponents(),
         actionHandler: (action: A2uiClientAction) => injector.get(Client).handleAction(action),
       };
     }),
