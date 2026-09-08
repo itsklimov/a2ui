@@ -419,6 +419,43 @@ class Catalog(Generic[TComponent, TFunction]):
         """Symmetrical alias for catalog_id."""
         return self.catalog_id
 
+    def is_compatible(self, message_version: str) -> bool:
+        """Checks whether this catalog is compatible with a given message protocol version.
+
+        Compatibility rules:
+        - Pre-1.0 (0.x): Minor versions must match (e.g. 0.8 is not compatible with 0.9,
+          but 0.9 is compatible with 0.9.1).
+        - Post-1.0 (1.x+): Major versions must match (e.g. 1.1 is compatible with 1.0,
+          but 2.0 is not compatible with 1.0).
+        """
+        if not self.protocol_version or not message_version:
+            return False
+
+        cat_ver_raw = getattr(self.protocol_version, "value", self.protocol_version)
+        msg_ver_raw = getattr(message_version, "value", message_version)
+
+        cat_str = str(cat_ver_raw).lstrip("v").strip()
+        msg_str = str(msg_ver_raw).lstrip("v").strip()
+
+        try:
+            cat_parts = [int(x) for x in cat_str.split(".")]
+            msg_parts = [int(x) for x in msg_str.split(".")]
+        except ValueError:
+            return cat_str == msg_str
+
+        cat_major = cat_parts[0] if len(cat_parts) > 0 else 0
+        msg_major = msg_parts[0] if len(msg_parts) > 0 else 0
+
+        cat_minor = cat_parts[1] if len(cat_parts) > 1 else 0
+        msg_minor = msg_parts[1] if len(msg_parts) > 1 else 0
+
+        # 0.x releases require matching minor versions (e.g., 0.8 != 0.9)
+        if cat_major == 0 or msg_major == 0:
+            return cat_major == msg_major and cat_minor == msg_minor
+
+        # 1.0+ releases require matching major versions (e.g., 1.x matches 1.y, 2.0 != 1.0)
+        return cat_major == msg_major
+
     @property
     def catalog_schema(self) -> dict[str, Any]:
         """Dynamically reconstructs the unified catalog JSON Schema on the fly."""

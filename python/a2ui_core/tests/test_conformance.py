@@ -23,7 +23,7 @@ import yaml
 from a2ui.core.catalog import Catalog
 from a2ui.core.basic_catalog import v0_8, v0_9, v1_0
 from a2ui.core.schema import ProtocolVersion
-from a2ui.core.processing import MessageProcessor
+from a2ui.core.processing import MessageProcessor, MessageProcessorOptions
 from a2ui.core.validation import STRICT_VALIDATION, ValidationConfig
 from a2ui.core.exceptions import (
     A2uiError,
@@ -49,7 +49,14 @@ CATEGORY_TO_EXCEPTION = {
     "RecursionError": (A2uiValidationError, A2uiValidatorError, A2uiError, ValueError),
 }
 
-SUPPORTED_PROTOCOL_VERSIONS = {"v0.8", "v0.9", "v1.0", "0.8", "0.9", "1.0"}
+SUPPORTED_PROTOCOL_VERSIONS = {
+    "v0.8",
+    "v0.9",
+    "v0.9.1",
+    "v1.0",
+    "v1.1",
+    "v2.0",
+}
 
 SKIP_TEST_NAMES: set[str] = set()
 
@@ -460,6 +467,8 @@ def test_conformance_suite(test_id: str, rel_path: str, case: dict[str, Any]) ->
         validate_handle_rpc_case(case)
     elif action == "select_catalog":
         validate_select_catalog_case(case)
+    elif action == "is_compatible":
+        validate_is_compatible_case(case)
     else:
         pytest.skip(f"Action '{action}' not implemented in core Python harness.")
 
@@ -551,7 +560,9 @@ def _assert_expected_surface_state(
 def validate_pure_validation_case(case: dict[str, Any]) -> None:
     catalogs = get_catalogs_for_test_case(case)
     val_config = STRICT_VALIDATION
-    processor = MessageProcessor(catalogs, validation_config=val_config)
+    processor = MessageProcessor(
+        catalogs, options=MessageProcessorOptions(validation_config=val_config)
+    )
 
     steps = case.get("steps")
     if not steps:
@@ -593,7 +604,9 @@ def validate_process_messages_case(case: dict[str, Any]) -> None:
         or case.get("options", {}).get("strict_mode")
     )
     val_config = STRICT_VALIDATION if is_strict else None
-    processor = MessageProcessor(catalogs, validation_config=val_config)
+    processor = MessageProcessor(
+        catalogs, options=MessageProcessorOptions(validation_config=val_config)
+    )
 
     messages = case.get("messages") or (
         [case["payload"]] if "payload" in case else None
@@ -733,6 +746,14 @@ def validate_catalog_schema_case(case: dict[str, Any]) -> None:
         assert cat.catalog_schema == expected
 
 
+def validate_is_compatible_case(case: dict[str, Any]) -> None:
+    cat_ver = case.get("protocolVersion", "v0.9")
+    target_ver = case["messageProtocolVersion"]
+    cat = Catalog(catalog_id="test_cat", protocol_version=cat_ver)
+    actual = cat.is_compatible(target_ver)
+    assert actual == case["expect"]
+
+
 def validate_resolve_path_case(case: dict[str, Any]) -> None:
     from a2ui.core.resolution.data_context import DataContext
     from a2ui.core.state.surface_model import SurfaceModel
@@ -837,7 +858,10 @@ def validate_handle_rpc_case(case: dict[str, Any]) -> None:
         components=[],
         functions=funcs,
     )
-    processor = MessageProcessor(catalogs=[cat])
+    processor = MessageProcessor(
+        catalogs=[cat],
+        options=MessageProcessorOptions(outbound_listener=lambda msg: None),
+    )
 
     if message:
         expect_dict = case.get("expect", {})
@@ -852,10 +876,14 @@ def validate_handle_rpc_case(case: dict[str, Any]) -> None:
         elif "response" in expect_dict:
             from a2ui.core.processing import ExecutionContext
 
+            import asyncio
+
             expect_resp = expect_dict["response"]
-            responses = processor.process_messages(
-                message,
-                context=ExecutionContext(user_activation_present=user_activation),
+            responses = asyncio.run(
+                processor.process_messages_async(
+                    message,
+                    context=ExecutionContext(is_user_activated=user_activation),
+                )
             )
             if expect_resp is None:
                 assert len(responses) == 0
@@ -869,28 +897,25 @@ def validate_handle_rpc_case(case: dict[str, Any]) -> None:
             inbound_response["agentFunctionResponse"]["functionCallId"] == correlated_id
         )
 
-        outbound_msg = processor.create_call_agent_function_message(
+        from a2ui.core.rpc import CallOptions
+        from a2ui.core.schema.v1_0.common_types import FunctionCall
+
+        fut = processor.call_agent_function(
             surface_id=outbound_call["surfaceId"],
-            function_call_id=outbound_call["functionCallId"],
-            call=outbound_call["callFunction"]["call"],
-            version="v1.0",
-            catalog_id=outbound_call["callFunction"].get("catalogId")
-            or "https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json",
-            args=outbound_call["callFunction"].get("args"),
+            call=FunctionCall(
+                call=outbound_call["callFunction"]["call"],
+                catalogId=outbound_call["callFunction"].get("catalogId")
+                or "https://a2ui.org/specification/v1_0/catalogs/basic/catalog.json",
+                args=outbound_call["callFunction"].get("args"),
+            ),
+            options=CallOptions(
+                function_call_id=outbound_call["functionCallId"],
+                version="v1.0",
+            ),
         )
-        assert outbound_msg["callAgentFunction"]["functionCallId"] == correlated_id
-
-        import asyncio
-
-        loop = asyncio.new_event_loop()
-        try:
-            fut = loop.create_future()
-            processor.register_pending_future(outbound_call["functionCallId"], fut)
-            processor.process_messages(inbound_response)
-            assert fut.done()
-            assert fut.result() == case.get("expect", {}).get("result")
-        finally:
-            loop.close()
+        processor.process_messages(inbound_response)
+        assert fut.done()
+        assert fut.result() == case.get("expect", {}).get("result")
 
 
 def validate_select_catalog_case(case: dict[str, Any]) -> None:

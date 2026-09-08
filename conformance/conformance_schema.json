@@ -34,6 +34,7 @@
             "handle_rpc",
             "has_parts",
             "is_a2ui_part",
+            "is_compatible",
             "load_catalog",
             "parse_full",
             "process_chunk",
@@ -57,6 +58,10 @@
         "protocolVersion": {
           "$ref": "#/$defs/ProtocolVersion",
           "description": "Target A2UI protocol version."
+        },
+        "messageProtocolVersion": {
+          "$ref": "#/$defs/ProtocolVersion",
+          "description": "Message protocol version."
         },
         "catalog": {
           "$ref": "#/$defs/Catalog",
@@ -177,7 +182,7 @@
     },
     "ProtocolVersion": {
       "type": "string",
-      "enum": ["v0.8", "v0.9", "v0.9.1", "v1.0"],
+      "enum": ["v0.8", "v0.9", "v0.9.1", "v1.0", "v1.1", "v2.0"],
       "description": "Supported A2UI protocol versions."
     },
     "Catalog": {

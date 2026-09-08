@@ -12,11 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from dataclasses import dataclass
+from .rpc_handler import CallOptions as CallOptions, OutboundListener, PendingAgentCall, RpcHandler
 
-
-@dataclass
-class ExecutionContext:
-    """Contextual execution options for message processing."""
-
-    is_user_activated: bool = False
+__all__ = [
+    "CallOptions",
+    "RpcHandler",
+    "PendingAgentCall",
+    "OutboundListener",
+]

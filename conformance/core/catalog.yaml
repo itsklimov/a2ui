@@ -689,3 +689,63 @@
   protocolVersion: "v1.0"
   useBasicCatalog: true
   expectFile: "conformance/test_data/converted_basic_catalog_v10.json"
+
+# ==============================================================================
+# Catalog Protocol Version Compatibility Tests (is_compatible)
+# ==============================================================================
+
+- name: test_catalog_is_compatible_v09_v08
+  description: Tests that a v0.9 catalog is incompatible with v0.8 protocol version.
+  action: is_compatible
+  protocolVersion: "v0.9"
+  messageProtocolVersion: "v0.8"
+  expect: false
+
+- name: test_catalog_is_compatible_v08_v09
+  description: Tests that a v0.8 catalog is incompatible with v0.9 protocol version.
+  action: is_compatible
+  protocolVersion: "v0.8"
+  messageProtocolVersion: "v0.9"
+  expect: false
+
+- name: test_catalog_is_compatible_v10_v09
+  description: Tests that a v1.0 catalog is incompatible with v0.9 protocol version.
+  action: is_compatible
+  protocolVersion: "v1.0"
+  messageProtocolVersion: "v0.9"
+  expect: false
+
+- name: test_catalog_is_compatible_v09_v10
+  description: Tests that a v0.9 catalog is incompatible with v1.0 protocol version.
+  action: is_compatible
+  protocolVersion: "v0.9"
+  messageProtocolVersion: "v1.0"
+  expect: false
+
+- name: test_catalog_is_compatible_v091_v09
+  description: Tests that a v0.9.1 catalog is compatible with v0.9 protocol version.
+  action: is_compatible
+  protocolVersion: "v0.9.1"
+  messageProtocolVersion: "v0.9"
+  expect: true
+
+- name: test_catalog_is_compatible_v09_v091
+  description: Tests that a v0.9 catalog is compatible with v0.9.1 protocol version.
+  action: is_compatible
+  protocolVersion: "v0.9"
+  messageProtocolVersion: "v0.9.1"
+  expect: true
+
+- name: test_catalog_is_compatible_v11_v10
+  description: Tests that a v1.1 catalog is compatible with v1.0 protocol version.
+  action: is_compatible
+  protocolVersion: "v1.1"
+  messageProtocolVersion: "v1.0"
+  expect: true
+
+- name: test_catalog_is_compatible_v20_v10
+  description: Tests that a v2.0 catalog is incompatible with v1.0 protocol version.
+  action: is_compatible
+  protocolVersion: "v2.0"
+  messageProtocolVersion: "v1.0"
+  expect: false

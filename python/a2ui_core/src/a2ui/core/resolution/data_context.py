@@ -18,7 +18,7 @@ import copy
 import inspect
 import re
 import warnings
-from typing import Any, Callable, Generic
+from typing import Any, Callable, Generic, cast
 from ..catalog.catalog import Catalog, TComponent, TFunction
 from ..state import DataModel
 from ..state.surface_model import SurfaceModel
@@ -46,7 +46,7 @@ class DataContext(Generic[TComponent, TFunction]):
     ):
         self.surface = surface
         self.path = path if path.endswith("/") else f"{path}/"
-        self.data_model = surface.data_model
+        self.data_model = surface.data_model if surface else cast(Any, None)
         self._index = index
         self.parent = parent
 
