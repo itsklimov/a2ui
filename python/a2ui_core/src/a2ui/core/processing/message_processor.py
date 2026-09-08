@@ -69,13 +69,26 @@ from .operations import (
 
 PendingAgentCallCallback = Callable[[Any, Optional[dict[str, Any]]], None]
 
-
 @dataclass
 class MessageProcessorOptions:
     """Options for configuring a MessageProcessor instance."""
 
     validation_config: ValidationConfig | None = None
     default_timeout_ms: float = 30000.0
+
+
+def _resolve_awaitable(res: Any) -> Any:
+    if not inspect.isawaitable(res):
+        return res
+    try:
+        loop = asyncio.get_running_loop()
+        return loop.run_until_complete(res)
+    except RuntimeError:
+
+        async def _run_coro() -> Any:
+            return await res
+
+        return asyncio.run(_run_coro())
 
 
 class MessageProcessor:
@@ -411,21 +424,11 @@ class MessageProcessor:
             )
 
         try:
-            val = None
-            if hasattr(fn, "execute"):
-                res = fn.execute(op.args)
-                if inspect.isawaitable(res):
-                    try:
-                        loop = asyncio.get_running_loop()
-                        val = loop.run_until_complete(res)
-                    except RuntimeError:
-
-                        async def _run_coro() -> Any:
-                            return await res
-
-                        val = asyncio.run(_run_coro())
-                else:
-                    val = res
+            val = (
+                _resolve_awaitable(fn.execute(op.args))
+                if hasattr(fn, "execute")
+                else None
+            )
 
             resp = RendererFunctionResponseMessage(
                 version=cast(Any, version),
